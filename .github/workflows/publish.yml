@@ -1,0 +1,96 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "CHANGELOG.md"
+      - ".github/workflows/publish.yml"
+
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["18", "20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve version and decide whether to release
+        id: version
+        run: |
+          set -euo pipefail
+          PKG_VERSION="$(node -p 'require("./package.json").version')"
+          SRC_VERSION="$(node -p 'require("fs").readFileSync("src/version.ts","utf8").match(/VERSION\s*=\s*"([^"]+)"/)[1]')"
+          if [ "$PKG_VERSION" != "$SRC_VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) != src/version.ts ($SRC_VERSION)"
+            exit 1
+          fi
+          TAG="v${PKG_VERSION}"
+          {
+            echo "version=$PKG_VERSION"
+            echo "tag=$TAG"
+          } >> "$GITHUB_OUTPUT"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — skipping publish."
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version $PKG_VERSION — will tag and publish."
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push release tag
+        if: steps.version.outputs.should_publish == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Build
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm run build
+
+      - name: Publish to npm
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

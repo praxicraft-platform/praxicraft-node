@@ -1,0 +1,60 @@
+{
+  "name": "@praxicraft/assess",
+  "version": "0.1.0",
+  "description": "Official Node.js / TypeScript SDK for the Praxicraft Assess Public API",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/praxicraft-platform/praxicraft-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/praxicraft-platform/praxicraft-node/issues"
+  },
+  "homepage": "https://github.com/praxicraft-platform/praxicraft-node#readme",
+  "keywords": [
+    "praxicraft",
+    "assess",
+    "hiring",
+    "api",
+    "sdk",
+    "typescript"
+  ],
+  "author": "Praxicraft",
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
