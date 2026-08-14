@@ -12,7 +12,10 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(aBuf, bBuf);
 }
 
-function toBodyBuffer(body: Buffer | Uint8Array | string): Buffer | null {
+function toBodyBuffer(
+  body: Buffer | Uint8Array | string | null | undefined,
+): Buffer | null {
+  if (body == null) return Buffer.alloc(0);
   if (typeof body === "string") return Buffer.from(body, "utf8");
   if (Buffer.isBuffer(body)) return body;
   if (body instanceof Uint8Array) return Buffer.from(body);
@@ -26,12 +29,12 @@ function toBodyBuffer(body: Buffer | Uint8Array | string): Buffer | null {
  * secret (`whsec_…`). Canonical header value is `sha256=<hex>`.
  * Legacy raw-hex signatures are also accepted.
  *
- * Pass the **raw** body (`Buffer`, `Uint8Array`, or UTF-8 string) — never a
- * re-serialized JSON object.
+ * Pass the **raw** body (`Buffer`, `Uint8Array`, UTF-8 string, or `null` /
+ * `undefined` for an empty payload) — never a re-serialized JSON object.
  */
 export function verifySignature(
   secret: string,
-  body: Buffer | Uint8Array | string,
+  body: Buffer | Uint8Array | string | null | undefined,
   headerSig: string,
 ): boolean {
   if (typeof secret !== "string" || !secret) return false;
