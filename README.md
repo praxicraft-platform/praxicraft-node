@@ -10,6 +10,19 @@ npm install @praxicraft/assess
 
 **Requires Node.js 18+.** Full API reference: [docs.praxicraft.com](https://docs.praxicraft.com)
 
+## Table of Contents
+
+- [Authentication](#authentication)
+- [Quickstart](#quickstart)
+- [What you can do](#what-you-can-do)
+  - [Check invite quota before bulk sends](#check-invite-quota-before-bulk-sends)
+  - [Register and test a webhook](#register-and-test-a-webhook)
+  - [Verify webhook signatures](#verify-webhook-signatures)
+  - [Paginate cohort results](#paginate-cohort-results)
+- [Errors](#errors)
+- [Requirements & support](#requirements--support)
+- [License](#license)
+
 ---
 
 ## Authentication

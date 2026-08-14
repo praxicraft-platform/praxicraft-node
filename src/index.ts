@@ -12,3 +12,13 @@ export {
   ValidationError,
   RateLimitError,
 } from "./errors.js";
+export type {
+  Org,
+  Assessment,
+  Invite,
+  ResultRow,
+  WebhookEndpoint,
+  Pipeline,
+  Enrollment,
+  Page,
+} from "./types.js";

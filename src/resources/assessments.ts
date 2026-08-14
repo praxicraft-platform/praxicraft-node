@@ -1,37 +1,38 @@
 import type { Client } from "../client.js";
 import { pathSegment } from "../paths.js";
+import type { Assessment, Page } from "../types.js";
 
 export class AssessmentsResource {
   constructor(private readonly client: Client) {}
 
-  list(params?: Record<string, unknown>) {
-    return this.client.get("/assessments/", { params });
+  list(params?: Record<string, unknown>): Promise<Page<Assessment>> {
+    return this.client.get("/assessments/", { params }) as Promise<Page<Assessment>>;
   }
 
-  retrieve(assessment: string) {
+  retrieve(assessment: string): Promise<Assessment> {
     const key = pathSegment(assessment, "assessment");
-    return this.client.get(`/assessments/${key}/`);
+    return this.client.get(`/assessments/${key}/`) as Promise<Assessment>;
   }
 
-  create(fields: Record<string, unknown>) {
-    return this.client.post("/assessments/create/", { json: fields });
+  create(fields: Record<string, unknown>): Promise<Assessment> {
+    return this.client.post("/assessments/create/", { json: fields }) as Promise<Assessment>;
   }
 
-  update(assessment: string, fields: Record<string, unknown>) {
+  update(assessment: string, fields: Record<string, unknown>): Promise<Assessment> {
     if (!fields || Object.keys(fields).length === 0) {
       throw new Error("update() requires at least one field to change");
     }
     const key = pathSegment(assessment, "assessment");
-    return this.client.patch(`/assessments/${key}/update/`, { json: fields });
+    return this.client.patch(`/assessments/${key}/update/`, { json: fields }) as Promise<Assessment>;
   }
 
-  activate(assessment: string) {
+  activate(assessment: string): Promise<Assessment> {
     return this.update(assessment, { status: "active" });
   }
 
-  listCases(assessment: string, params?: Record<string, unknown>) {
+  listCases(assessment: string, params?: Record<string, unknown>): Promise<Page> {
     const key = pathSegment(assessment, "assessment");
-    return this.client.get(`/assessments/${key}/cases/`, { params });
+    return this.client.get(`/assessments/${key}/cases/`, { params }) as Promise<Page>;
   }
 
   attachCases(
@@ -42,7 +43,7 @@ export class AssessmentsResource {
       source?: string;
       [key: string]: unknown;
     },
-  ) {
+  ): Promise<Record<string, unknown>> {
     const { cases, ...rest } = args;
     const body: Record<string, unknown> = { ...rest };
     if (cases !== undefined) body.cases = cases;
@@ -50,21 +51,23 @@ export class AssessmentsResource {
       throw new Error("attachCases() requires cases or case_id");
     }
     const key = pathSegment(assessment, "assessment");
-    return this.client.post(`/assessments/${key}/cases/attach/`, { json: body });
+    return this.client.post(`/assessments/${key}/cases/attach/`, { json: body }) as Promise<
+      Record<string, unknown>
+    >;
   }
 
   replaceCases(
     assessment: string,
     cases: Record<string, unknown>[],
     extra: Record<string, unknown> = {},
-  ) {
+  ): Promise<Record<string, unknown>> {
     const key = pathSegment(assessment, "assessment");
     return this.client.put(`/assessments/${key}/cases/replace/`, {
       json: { cases, ...extra },
-    });
+    }) as Promise<Record<string, unknown>>;
   }
 
-  removeCase(assessment: string, assessmentCaseId: string) {
+  removeCase(assessment: string, assessmentCaseId: string): Promise<null> {
     const key = pathSegment(assessment, "assessment");
     const caseId = String(assessmentCaseId).trim();
     if (!caseId) {
@@ -72,6 +75,6 @@ export class AssessmentsResource {
     }
     return this.client.delete(`/assessments/${key}/cases/remove/`, {
       json: { assessment_case_id: caseId },
-    });
+    }) as Promise<null>;
   }
 }

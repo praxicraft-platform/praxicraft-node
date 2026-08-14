@@ -141,7 +141,14 @@ export function raiseForStatus(args: {
 }
 
 function parseRetryAfter(value: string | undefined): number | undefined {
+  // Imported lazily-shaped helper lives in retry.ts — keep errors.ts thin by duplicating
+  // the public parse used for RateLimitError construction.
   if (value == null) return undefined;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : undefined;
+  const text = String(value).trim();
+  if (!text) return undefined;
+  const asNumber = Number(text);
+  if (Number.isFinite(asNumber)) return Math.max(0, asNumber);
+  const when = Date.parse(text);
+  if (!Number.isFinite(when)) return undefined;
+  return Math.max(0, (when - Date.now()) / 1000);
 }

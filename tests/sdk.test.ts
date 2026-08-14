@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APIConnectionError,
   APIError,
@@ -16,6 +16,11 @@ import {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+beforeEach(async () => {
+  const { setSleepFn } = await import("../src/retry.js");
+  setSleepFn(async () => {});
 });
 
 function mockFetch(handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> | Response) {
@@ -91,7 +96,11 @@ describe("HTTP + errors", () => {
         { "Retry-After": "12" },
       ),
     );
-    const client = new Client({ apiKey: "ct_live_test", baseUrl: "https://assess.example.com" });
+    const client = new Client({
+      apiKey: "ct_live_test",
+      baseUrl: "https://assess.example.com",
+      maxRetries: 0,
+    });
     try {
       await client.assessments.list();
       expect.unreachable();
@@ -103,7 +112,11 @@ describe("HTTP + errors", () => {
 
   it("maps HTML 502 to status error", async () => {
     mockFetch(async () => new Response("<html>Bad Gateway</html>", { status: 502 }));
-    const client = new Client({ apiKey: "ct_live_test", baseUrl: "https://assess.example.com" });
+    const client = new Client({
+      apiKey: "ct_live_test",
+      baseUrl: "https://assess.example.com",
+      maxRetries: 0,
+    });
     await expect(client.org.retrieve()).rejects.toBeInstanceOf(APIStatusError);
   });
 
@@ -280,9 +293,86 @@ describe("verifySignature", () => {
     expect(verifySignature(secret, body, `sha256=${digest}`)).toBe(true);
   });
 
-  it("rejects non-body inputs", () => {
-    expect(verifySignature("whsec_x", null as unknown as Buffer, "sha256=ab")).toBe(false);
+  it("rejects non-body object inputs", () => {
     expect(verifySignature("whsec_x", { a: 1 } as unknown as Buffer, "sha256=ab")).toBe(false);
+  });
+
+  it("treats null/undefined body as empty payload", () => {
+    const secret = "whsec_test";
+    const digest = createHmac("sha256", secret).update(Buffer.alloc(0)).digest("hex");
+    expect(verifySignature(secret, null, `sha256=${digest}`)).toBe(true);
+    expect(verifySignature(secret, undefined, `sha256=${digest}`)).toBe(true);
+  });
+});
+
+describe("retries", () => {
+  it("retries 429 then succeeds", async () => {
+    const { setSleepFn } = await import("../src/retry.js");
+    setSleepFn(async () => {});
+    let calls = 0;
+    mockFetch(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return jsonResponse(
+          429,
+          { error: { code: "RATE_LIMITED", message: "slow" } },
+          { "Retry-After": "0" },
+        );
+      }
+      return jsonResponse(200, { name: "Acme" });
+    });
+    const client = new Client({
+      apiKey: "ct_live_test",
+      baseUrl: "https://assess.example.com",
+      maxRetries: 2,
+    });
+    await expect(client.org.retrieve()).resolves.toEqual({ name: "Acme" });
+    expect(calls).toBe(2);
+  });
+
+  it("parses HTTP-date Retry-After on RateLimitError", async () => {
+    const when = new Date(Date.now() + 2500).toUTCString();
+    mockFetch(async () =>
+      jsonResponse(
+        429,
+        { error: { code: "RATE_LIMITED", message: "slow" } },
+        { "Retry-After": when },
+      ),
+    );
+    const client = new Client({
+      apiKey: "ct_live_test",
+      baseUrl: "https://assess.example.com",
+      maxRetries: 0,
+    });
+    try {
+      await client.assessments.list();
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(RateLimitError);
+      const ra = (err as RateLimitError).retryAfter;
+      expect(ra).toBeTypeOf("number");
+      expect(ra!).toBeGreaterThanOrEqual(0);
+      expect(ra!).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it("does not retry validation errors", async () => {
+    let calls = 0;
+    mockFetch(async () => {
+      calls += 1;
+      return jsonResponse(400, {
+        error: { code: "VALIDATION_ERROR", message: "bad" },
+      });
+    });
+    const client = new Client({
+      apiKey: "ct_live_test",
+      baseUrl: "https://assess.example.com",
+      maxRetries: 3,
+    });
+    await expect(
+      client.invites.create("demo", { email: "x@example.com" }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(calls).toBe(1);
   });
 });
 
@@ -291,7 +381,11 @@ describe("connection errors", () => {
     mockFetch(async () => {
       throw new TypeError("fetch failed");
     });
-    const client = new Client({ apiKey: "ct_live_test", baseUrl: "https://assess.example.com" });
+    const client = new Client({
+      apiKey: "ct_live_test",
+      baseUrl: "https://assess.example.com",
+      maxRetries: 0,
+    });
     await expect(client.org.retrieve()).rejects.toBeInstanceOf(APIConnectionError);
   });
 });

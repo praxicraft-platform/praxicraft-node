@@ -1,6 +1,7 @@
 import {
   APIConnectionError,
   APIError,
+  APIStatusError,
   raiseForStatus,
 } from "./errors.js";
 import { AssessmentsResource } from "./resources/assessments.js";
@@ -9,6 +10,12 @@ import { OrgResource } from "./resources/org.js";
 import { PipelinesResource } from "./resources/pipelines.js";
 import { ResultsResource } from "./resources/results.js";
 import { WebhooksResource } from "./resources/webhooks.js";
+import {
+  DEFAULT_MAX_RETRIES,
+  retryDelayMs,
+  shouldRetryStatus,
+  sleepFn,
+} from "./retry.js";
 import { VERSION } from "./version.js";
 
 export const DEFAULT_BASE_URL = "https://assess.praxicraft.com";
@@ -28,6 +35,8 @@ export type ClientOptions = {
   apiKey?: string;
   baseUrl?: string;
   timeoutMs?: number;
+  /** Retries after the first attempt on 429 / 5xx / transport errors (default 2). */
+  maxRetries?: number;
   fetch?: typeof fetch;
 };
 
@@ -42,6 +51,7 @@ export class Client {
   readonly baseUrl: string;
   readonly apiPrefix = DEFAULT_API_PREFIX;
   readonly timeoutMs: number;
+  readonly maxRetries: number;
   readonly assessments: AssessmentsResource;
   readonly invites: InvitesResource;
   readonly results: ResultsResource;
@@ -76,6 +86,7 @@ export class Client {
     this.apiKey = resolvedKey;
     this.baseUrl = resolvedBase;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.maxRetries = Math.max(0, options.maxRetries ?? DEFAULT_MAX_RETRIES);
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
 
     this.assessments = new AssessmentsResource(this);
@@ -90,6 +101,44 @@ export class Client {
     method: string,
     path: string,
     options: RequestOptions = {},
+  ): Promise<unknown> {
+    const attempts = this.maxRetries + 1;
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      if (attempt > 0) {
+        const retryAfter =
+          lastError instanceof APIStatusError
+            ? lastError.headers["retry-after"]
+            : undefined;
+        await sleepFn(retryDelayMs(attempt - 1, retryAfter));
+      }
+
+      try {
+        return await this.requestOnce(method, path, options);
+      } catch (err) {
+        lastError = err;
+        if (err instanceof APIConnectionError && attempt < attempts - 1) {
+          continue;
+        }
+        if (
+          err instanceof APIStatusError &&
+          shouldRetryStatus(err.statusCode) &&
+          attempt < attempts - 1
+        ) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastError;
+  }
+
+  private async requestOnce(
+    method: string,
+    path: string,
+    options: RequestOptions,
   ): Promise<unknown> {
     const url = this.buildUrl(path, options.params);
     // Custom headers first; auth / UA are forced so callers cannot strip them.
