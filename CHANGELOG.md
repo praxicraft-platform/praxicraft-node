@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1] — 2026-08-14
+
+### Changed
+
+- Patch release so Publish can tag `v0.1.1` and ship to npm (`v0.1.0` already exists).
+
 ## [0.1.0] — 2026-08-14
 
 ### Added
