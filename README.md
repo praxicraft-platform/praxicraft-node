@@ -8,7 +8,7 @@ Use it to invite candidates, check invite quota, manage webhooks, enroll hiring 
 npm install @praxicraft/assess
 ```
 
-**Requires Node.js 18+.** Full API reference: [docs.praxicraft.com](https://docs.praxicraft.com)
+**Requires Node.js 18+.** Full API reference: [https://docs.praxicraft.com](https://docs.praxicraft.com/sdks/node)
 
 ## Table of Contents
 
