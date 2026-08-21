@@ -31,3 +31,9 @@ Flow:
 3. Prefer **Trusted Publishing** on npm for this repo + workflow `publish.yml` + environment `npm`.  
    Or set repository secret `NPM_TOKEN` (granular automation token with publish access) as a fallback — the workflow uses OIDC provenance when configured.
 4. Merge a version bump to `main` for the first release.
+
+## GitHub Release
+
+The Publish workflow also creates a **GitHub Release** for tag `v{version}` (with generated notes and package assets where applicable).
+
+You can run **Actions → Publish → Run workflow** manually (`workflow_dispatch`) after bumping the version on `main`.
