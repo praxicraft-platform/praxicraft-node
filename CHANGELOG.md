@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- ci: auto-bump releases with GitHub Release + package publish
+- Add GitHub Release publishing to the Publish workflow.
+- Update API reference link in README
+
 ## [0.1.0] — 2026-08-14
 
 ### Added
