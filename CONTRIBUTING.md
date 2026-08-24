@@ -14,3 +14,7 @@ Guidelines:
 - Keep HTTP mocked in tests — no live production calls in CI.
 - Public exports live in `src/index.ts`.
 - Release notes: [RELEASING.md](RELEASING.md).
+
+## Code of Conduct
+
+This project follows our [Code of Conduct](./CODE_OF_CONDUCT.md). Report issues to support@praxicraft.com.
