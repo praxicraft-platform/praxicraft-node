@@ -86,7 +86,7 @@ Responses are **flat JSON** (same shape as the Public API — no `{ data: … }`
 | Resource | Common methods |
 |----------|----------------|
 | `client.org` | `retrieve()`, `stats()` |
-| `client.assessments` | `list()`, `retrieve()`, `create()`, `update()`, `activate()`, `listCases()`, `attachCases()`, `replaceCases()`, `removeCase()` |
+| `client.assessments` | `list()`, `retrieve()`, `create()`, `update()`, `activate()`, `listTasks()`, `attachTasks()`, `replaceTasks()`, `removeTask()` |
 | `client.invites` | `create()`, `bulkCreate()`, `list()`, `retrieve()`, `remind()`, `cancel()` |
 | `client.results` | `list()`, `retrieve()`, `iterAll()` |
 | `client.webhooks` | `list()`, `create()`, `retrieve()`, `update()`, `delete()`, `test()`, `deliveries()` |
