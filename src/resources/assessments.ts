@@ -30,51 +30,51 @@ export class AssessmentsResource {
     return this.update(assessment, { status: "active" });
   }
 
-  listCases(assessment: string, params?: Record<string, unknown>): Promise<Page> {
+  listTasks(assessment: string, params?: Record<string, unknown>): Promise<Page> {
     const key = pathSegment(assessment, "assessment");
-    return this.client.get(`/assessments/${key}/cases/`, { params }) as Promise<Page>;
+    return this.client.get(`/assessments/${key}/tasks/`, { params }) as Promise<Page>;
   }
 
-  attachCases(
+  attachTasks(
     assessment: string,
     args: {
-      cases?: Record<string, unknown>[];
-      case_id?: string;
+      tasks?: Record<string, unknown>[];
+      task_id?: string;
       source?: string;
       [key: string]: unknown;
     },
   ): Promise<Record<string, unknown>> {
-    const { cases, ...rest } = args;
+    const { tasks, ...rest } = args;
     const body: Record<string, unknown> = { ...rest };
-    if (cases !== undefined) body.cases = cases;
+    if (tasks !== undefined) body.tasks = tasks;
     if (Object.keys(body).length === 0) {
-      throw new Error("attachCases() requires cases or case_id");
+      throw new Error("attachTasks() requires tasks or task_id");
     }
     const key = pathSegment(assessment, "assessment");
-    return this.client.post(`/assessments/${key}/cases/attach/`, { json: body }) as Promise<
+    return this.client.post(`/assessments/${key}/tasks/attach/`, { json: body }) as Promise<
       Record<string, unknown>
     >;
   }
 
-  replaceCases(
+  replaceTasks(
     assessment: string,
-    cases: Record<string, unknown>[],
+    tasks: Record<string, unknown>[],
     extra: Record<string, unknown> = {},
   ): Promise<Record<string, unknown>> {
     const key = pathSegment(assessment, "assessment");
-    return this.client.put(`/assessments/${key}/cases/replace/`, {
-      json: { cases, ...extra },
+    return this.client.put(`/assessments/${key}/tasks/replace/`, {
+      json: { tasks, ...extra },
     }) as Promise<Record<string, unknown>>;
   }
 
-  removeCase(assessment: string, assessmentCaseId: string): Promise<null> {
+  removeTask(assessment: string, assessmentTaskId: string): Promise<null> {
     const key = pathSegment(assessment, "assessment");
-    const caseId = String(assessmentCaseId).trim();
-    if (!caseId) {
-      throw new Error("assessmentCaseId must be a non-empty string");
+    const taskId = String(assessmentTaskId).trim();
+    if (!taskId) {
+      throw new Error("assessmentTaskId must be a non-empty string");
     }
-    return this.client.delete(`/assessments/${key}/cases/remove/`, {
-      json: { assessment_case_id: caseId },
+    return this.client.delete(`/assessments/${key}/tasks/remove/`, {
+      json: { assessment_task_id: taskId },
     }) as Promise<null>;
   }
 }

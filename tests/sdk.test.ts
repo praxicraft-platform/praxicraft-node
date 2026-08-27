@@ -389,3 +389,55 @@ describe("connection errors", () => {
     await expect(client.org.retrieve()).rejects.toBeInstanceOf(APIConnectionError);
   });
 });
+
+describe("assessment tasks", () => {
+  it("attach, list, replace, and remove tasks", async () => {
+    const calls: Array<{ method: string; url: string; body?: unknown }> = [];
+    mockFetch(async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      calls.push({ method, url, body });
+
+      if (url.endsWith("/tasks/attach/")) {
+        return jsonResponse(200, { attached: 1 });
+      }
+      if (url.endsWith("/tasks/") && method === "GET") {
+        return jsonResponse(200, { results: [{ id: "row-1" }] });
+      }
+      if (url.endsWith("/tasks/replace/")) {
+        return jsonResponse(200, { replaced: true });
+      }
+      if (url.endsWith("/tasks/remove/")) {
+        return new Response(null, { status: 204 });
+      }
+      return jsonResponse(404, { error: { code: "NOT_FOUND", message: "missing" } });
+    });
+
+    const client = new Client({ apiKey: "ct_live_test", baseUrl: "https://assess.example.com" });
+
+    await expect(
+      client.assessments.attachTasks("demo", {
+        tasks: [{ task_id: "task-1", source: "platform" }],
+      }),
+    ).resolves.toEqual({ attached: 1 });
+
+    await expect(client.assessments.listTasks("demo")).resolves.toEqual({
+      results: [{ id: "row-1" }],
+    });
+
+    await expect(
+      client.assessments.replaceTasks("demo", [{ task_id: "task-2", source: "org" }]),
+    ).resolves.toEqual({ replaced: true });
+
+    await expect(client.assessments.removeTask("demo", "row-1")).resolves.toBeNull();
+
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      body: { tasks: [{ task_id: "task-1", source: "platform" }] },
+    });
+    expect(calls[1].url).toContain("/assessments/demo/tasks/");
+    expect(calls[2].body).toEqual({ tasks: [{ task_id: "task-2", source: "org" }] });
+    expect(calls[3].body).toEqual({ assessment_task_id: "row-1" });
+  });
+});
